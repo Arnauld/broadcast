@@ -9,10 +9,10 @@ import org.slf4j.LoggerFactory
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
 object HeaderDecoder {
-  def apply(): HeaderDecoder = new HeaderDecoder
+  def apply(decoderRegistry:MessageDecoderRegistry = DefaultMessageDecoderRegistry): HeaderDecoder = new HeaderDecoder(decoderRegistry)
 }
 
-class HeaderDecoder extends Decoder {
+class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
 
   private val log = LoggerFactory.getLogger(classOf[HeaderDecoder])
 
@@ -59,7 +59,7 @@ class HeaderDecoder extends Decoder {
 
           // Hand off the remaining data to the next decoder
           stream.discardReadBytes()
-          decoderFor(header) match {
+          decoderRegistry.decoderFor(header) match {
             case None =>
               DecodeResult.UnsupportedType(header)
             case Some(decoder) =>
@@ -67,13 +67,6 @@ class HeaderDecoder extends Decoder {
           }
       }
     }
-  }
-
-  def decoderFor(header: Header): Option[Decoder] = header.messageType match {
-    case CommandType.CONNECT =>
-      Some(new ConnectDecoder(header))
-    case _ =>
-      None
   }
 
   //
