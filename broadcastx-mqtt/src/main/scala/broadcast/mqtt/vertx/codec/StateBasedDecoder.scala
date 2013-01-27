@@ -38,7 +38,7 @@ class StateBasedDecoder(initialDecoder: Decoder,
           decoder = newDecoder
           decode0()
         case UnsupportedType(header) =>
-          handler.unsupportedMessageType(header)
+          handler.noDecoderFoundForType(header)
       }
     }
     decode0()

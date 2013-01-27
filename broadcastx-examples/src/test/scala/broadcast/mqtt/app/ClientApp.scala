@@ -11,6 +11,9 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 object ClientApp extends App {
   val latch = new CountDownLatch(1)
   val mqtt = new MQTT
+  mqtt.setConnectAttemptsMax(3)
+  mqtt.setReconnectAttemptsMax(3)
+  mqtt.setReconnectDelay(3000)
   mqtt.setHost("127.0.0.1", 7654)
   val cnxCb = new CbConnection(mqtt)
 

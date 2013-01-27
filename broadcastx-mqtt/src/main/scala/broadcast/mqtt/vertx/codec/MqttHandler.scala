@@ -21,9 +21,9 @@ class MqttHandler(gateway: MqttHandlerGateway,
 
   def getSessionId = sessionId
 
-  def unsupportedMessageType(header: Header) {
-    // log'n close
-    sock.close()
+  def noDecoderFoundForType(header: Header) {
+    log.error("Unsupported message type (no decoder found), got: {}", header)
+    disconnectCausedByUnsupportedMessageType()
   }
 
   /**
@@ -36,6 +36,10 @@ class MqttHandler(gateway: MqttHandlerGateway,
     msg match {
       case connect: Connect =>
         handleConnect(msg.asInstanceOf[Connect])
+      case _ =>
+        log.error("Message decoded but not handlede, got: {}", msg)
+        disconnectCausedByUnsupportedMessageType()
+
     }
   }
 
@@ -49,7 +53,7 @@ class MqttHandler(gateway: MqttHandlerGateway,
     val clientId = msg.clientId
     val len = if (clientId == null) 0 else clientId.length
     if (len == 0 || len > 23) {
-      log.info("Identifier rejected caused by invalid size: \'{}\'", clientId)
+      log.info("Identifier rejected caused by an invalid size: \'{}\'", clientId)
       encoders.writeConnack(sock, Connack.Code.IdentifierRejected)
     }
     // Check username & password
@@ -58,23 +62,27 @@ class MqttHandler(gateway: MqttHandlerGateway,
       encoders.writeConnack(sock, Connack.Code.BadUserOrPassword)
     }
     else if (sessionId.isDefined) {
-      log.info("User already identified: \'{}\'", sessionId.get)
-      encoders.writeConnack(sock, Connack.Code.IdentifierRejected)
+      log.warn("User already identified: \'{}\'", sessionId.get)
+      // TODO find a suitable connack code...
+      encoders.writeConnack(sock, Connack.Code.BadUserOrPassword)
     }
     // username authorized, let's continue
     else {
       val sessId = SessionId.generate(clientId)
+      log.info("User connected: clientId:\'{}\' sessionId:\'{}\'", clientId, sessId)
       sessionId = Some(sessId)
       gateway.register(sessId, this)
       encoders.writeConnack(sock, Connack.Code.Accepted)
     }
   }
 
+  //TODO: enum DisconnectReason
   /**
    * The connection should be closed since a client with the same clientId
    * is reconnecting.
    */
   def disconnectCausedByConnect() {
+    log.warn("Disconnecting client because its reconnection has been reported, session: {}", sessionId)
     disconnect()
   }
 
@@ -82,6 +90,15 @@ class MqttHandler(gateway: MqttHandlerGateway,
    * The connection should be closed since the socket thrown an error: fail fast.
    */
   def disconnectCausedBySocketError() {
+    log.warn("Disconnecting client because socket error has been reported, session: {}", sessionId)
+    disconnect()
+  }
+
+/**
+   * The connection should be closed since an unsupported message type has been received.
+   */
+  def disconnectCausedByUnsupportedMessageType() {
+    log.warn("Disconnecting client because an unsupported message type has been reported, session: {}", sessionId)
     disconnect()
   }
 

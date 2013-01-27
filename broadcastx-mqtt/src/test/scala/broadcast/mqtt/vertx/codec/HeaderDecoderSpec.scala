@@ -78,6 +78,34 @@ class HeaderDecoderSpec extends FeatureSpec with GivenWhenThen with BeforeAndAft
 
   }
 
+  feature("Header remaining length is successfully read") {
+    scenario("a value small enough to not have to decode it") {
+      given("a stream fed with a small byte")
+      val stream = new ByteStream()
+      val bytes: Array[Byte] = "0000 0010"
+      stream.appendBuffer(new Buffer(bytes))
+
+      when("one attempts to decode the remaining length")
+      val result = HeaderDecoder.decodeRemainingLength(stream)
+
+      then("The remaining length is sucessfully decoded")
+      result should be === Some(2)
+    }
+
+    scenario("the maximum value of the remaining length is successfully read") {
+      given("a stream fed with the 4 bytes representing the maximum value allowed")
+      val stream = new ByteStream()
+      val bytes = Array(0xFF, 0xFF, 0xFF, 0x7F).map(_.asInstanceOf[Byte])
+      stream.appendBuffer(new Buffer(bytes))
+
+      when("one attempts to decode the remaining length")
+      val result = HeaderDecoder.decodeRemainingLength(stream)
+
+      then("The remaining length is sucessfully decoded")
+      result should be === Some(268435455)
+    }
+  }
+
   class GrabHeaderDecoderRegistry extends MessageDecoderRegistry {
     var header:Header = _
     def decoderFor(h: Header) = {

@@ -65,7 +65,7 @@ class MqttBroker extends Verticle with MqttHandlerGateway {
 
     sock.exceptionHandler({
       e: Exception =>
-        log.error("Oops, something went wrong ({})", handler.getSessionId, e)
+        log.error("Oops, something went wrong (%1$s)", handler.getSessionId, e)
         handler.disconnectCausedBySocketError()
     })
     sock.dataHandler(new StateBasedDecoder(HeaderDecoder(), handler))

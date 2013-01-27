@@ -10,6 +10,35 @@ import org.slf4j.LoggerFactory
  */
 object HeaderDecoder {
   def apply(decoderRegistry:MessageDecoderRegistry = DefaultMessageDecoderRegistry): HeaderDecoder = new HeaderDecoder(decoderRegistry)
+
+  //
+  // multiplier = 1
+  // value = 0
+  // do
+  //    digit = 'next digit from stream'
+  //    value += (digit AND 127) * multiplier
+  //    multiplier *= 128
+  // while ((digit AND 128) != 0)
+  //
+  // (MQTT V3.1 Protocol Specification - section 2.1)
+  def decodeRemainingLength(stream: ByteStream): Option[Long] = {
+    @tailrec def decodeRemainingLength0(multiplier: Long, length: Long): Option[Long] = {
+      if (stream.readableBytes() == 0)
+      // not enough data
+        None
+      else {
+        val digit = stream.readByte()
+        val newLength = length + (digit & 127) * multiplier
+        val newMultiplier = multiplier * 128
+        if ((digit & 128) != 0)
+          decodeRemainingLength0(newMultiplier, newLength)
+        else
+          Some(newLength)
+      }
+    }
+    decodeRemainingLength0(1, 0)
+  }
+
 }
 
 class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
@@ -36,7 +65,7 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
       //---------+------------------------------------------------+
 
       // Make sure remaining length is complete, otherwise wait for more data
-      decodeRemainingLength(stream) match {
+      HeaderDecoder.decodeRemainingLength(stream) match {
         case None =>
           // The whole bytes were not received yet - return null.
           // This method will be invoked again when more packets are
@@ -67,33 +96,5 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
           }
       }
     }
-  }
-
-  //
-  // multiplier = 1
-  // value = 0
-  // do
-  //    digit = 'next digit from stream'
-  //    value += (digit AND 127) * multiplier
-  //    multiplier *= 128
-  // while ((digit AND 128) != 0)
-  //
-  // (MQTT V3.1 Protocol Specification - section 2.1)
-  def decodeRemainingLength(stream: ByteStream): Option[Long] = {
-    @tailrec def decodeRemainingLength0(multiplier: Long, length: Long): Option[Long] = {
-      if (stream.readableBytes() == 0)
-      // not enough data
-        None
-      else {
-        val digit = stream.readByte()
-        val newLength = length + (digit & 127) * multiplier
-        val newMultiplier = multiplier * 128
-        if ((digit & 128) != 0)
-          decodeRemainingLength0(newMultiplier, newLength)
-        else
-          Some(newLength)
-      }
-    }
-    decodeRemainingLength0(1, 0)
   }
 }
