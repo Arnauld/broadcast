@@ -6,6 +6,7 @@ import org.vertx.java.core.buffer.Buffer
 import broadcast.util.Bytes._
 import org.scalatest.matchers.{MatchResult, Matcher}
 import broadcast.mqtt.domain.{QosLevel, CommandType, Header}
+import broadcast.mqtt.vertx.util.ByteStream
 
 /**
  *

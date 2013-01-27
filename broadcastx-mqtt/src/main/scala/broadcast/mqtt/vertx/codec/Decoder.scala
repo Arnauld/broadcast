@@ -1,6 +1,7 @@
 package broadcast.mqtt.vertx.codec
 
 import broadcast.mqtt.domain.Header
+import broadcast.mqtt.vertx.util.ByteStream
 
 /**
  *

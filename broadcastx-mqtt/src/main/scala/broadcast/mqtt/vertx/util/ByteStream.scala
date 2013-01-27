@@ -1,4 +1,4 @@
-package broadcast.mqtt.vertx.codec
+package broadcast.mqtt.vertx.util
 
 import org.vertx.java.core.buffer.Buffer
 import org.jboss.netty.buffer.ChannelBuffers
@@ -7,7 +7,7 @@ import java.io.{DataInput, DataInputStream}
 /**
  *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
- * @see org.jboss.netty.buffer.ChannelBuffer#readableBytes
+ * @see [[org.jboss.netty.buffer.ChannelBuffer]]
  */
 class ByteStream(initialSizeHint: Int = 64) {
 
@@ -17,9 +17,10 @@ class ByteStream(initialSizeHint: Int = 64) {
   private val channelBuffer = ChannelBuffers.dynamicBuffer(ChannelBuffers.BIG_ENDIAN, initialSizeHint)
 
   /**
-   * Appends the specified {@code Buffer} to the end of this Buffer. The buffer will expand as
-   * necessary to accomodate any bytes written.<p>
-   * Returns a reference to {@code this} so multiple operations can be appended together.
+   * Appends the specified [[org.vertx.java.core.buffer.Buffer]] to the end of
+   * this Buffer. The buffer will expand as necessary to accomodate any bytes
+   * written.<p>
+   * Returns a reference to `this` so multiple operations can be appended together.
    */
   def appendBuffer(buff: Buffer): ByteStream = {
     // copied from org.vertx.java.core.buffer.Buffer#appendBuffer
@@ -30,10 +31,10 @@ class ByteStream(initialSizeHint: Int = 64) {
   }
 
   /**
-   * Discards the bytes between the 0th index and {@code readerIndex}.
-   * It moves the bytes between {@code readerIndex} and {@code writerIndex}
-   * to the 0th index, and sets {@code readerIndex} and {@code writerIndex}
-   * to {@code 0} and {@code oldWriterIndex - oldReaderIndex} respectively.
+   * Discards the bytes between the 0th index and `readerIndex`.
+   * It moves the bytes between `readerIndex`  and `writerIndex`
+   * to the 0th index, and sets `readerIndex`  and `writerIndex`
+   * to `0` and `oldWriterIndex - oldReaderIndex` respectively.
    * <p>
    * Please refer to the class documentation for more detailed explanation.
    */
@@ -43,9 +44,9 @@ class ByteStream(initialSizeHint: Int = 64) {
 
   /**
    *
-   * @see org.jboss.netty.buffer.ChannelBuffer#readableBytes
+   * @see [[org.jboss.netty.buffer.ChannelBuffer]]
    */
-  def readableBytes():Int = channelBuffer.readableBytes()
+  def readableBytes(): Int = channelBuffer.readableBytes()
 
   def markReaderIndex(): ByteStream = {
     channelBuffer.markReaderIndex()
@@ -57,7 +58,7 @@ class ByteStream(initialSizeHint: Int = 64) {
     this
   }
 
-  def readerIndex():Int = channelBuffer.readerIndex()
+  def readerIndex(): Int = channelBuffer.readerIndex()
 
   def readByte(): Byte = channelBuffer.readByte()
 
@@ -96,7 +97,8 @@ class ByteStream(initialSizeHint: Int = 64) {
 
   /**
    * In MQTT, strings are prefixed with two bytes to denote the length.
-   * String Length is the number of bytes of encoded string characters, not the number of characters.
+   * String Length is the number of bytes of encoded string characters,
+   * not the number of characters.
    * The Java writeUTF() and readUTF() data stream methods use this format.
    *
    * (MQTT V3.1 Protocol Specification - section 2.5)
@@ -120,15 +122,15 @@ private class BufferAsDataInput(stream: ByteStream) extends DataInput {
     throw new UnsupportedOperationException
   }
 
-  def readByte():Byte = stream.readByte()
+  def readByte(): Byte = stream.readByte()
 
-  def readUnsignedByte():Int = stream.readUnsignedByte()
+  def readUnsignedByte(): Int = stream.readUnsignedByte()
 
-  def readShort():Short = stream.readShort()
+  def readShort(): Short = stream.readShort()
 
-  def readUnsignedShort():Int = stream.readUnsignedShort()
+  def readUnsignedShort(): Int = stream.readUnsignedShort()
 
-  def readInt():Int = stream.readInt()
+  def readInt(): Int = stream.readInt()
 
   def readLong() = notImplemented()
 

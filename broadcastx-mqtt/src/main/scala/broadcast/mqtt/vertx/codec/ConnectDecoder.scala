@@ -2,6 +2,7 @@ package broadcast.mqtt.vertx.codec
 
 import broadcast.mqtt.domain.{Connect, Message, QosLevel, Header}
 import org.slf4j.LoggerFactory
+import broadcast.mqtt.vertx.util.ByteStream
 
 /**
  *

@@ -5,6 +5,7 @@ import org.vertx.java.core.Handler
 import annotation.tailrec
 import broadcast.mqtt.domain.MqttMessage
 import org.slf4j.LoggerFactory
+import broadcast.mqtt.vertx.util.ByteStream
 
 /**
  *
