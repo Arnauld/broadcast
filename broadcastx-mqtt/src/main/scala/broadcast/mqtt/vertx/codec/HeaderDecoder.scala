@@ -99,4 +99,7 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
       }
     }
   }
+
+  override def toString = "HeaderDecoder()"
+
 }

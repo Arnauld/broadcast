@@ -1,6 +1,6 @@
 package broadcast.mqtt.vertx.codec
 
-import broadcast.mqtt.domain.{BoundedToSession, Publish, Header}
+import broadcast.mqtt.domain.{SessionId, Publish, Header}
 import org.slf4j.LoggerFactory
 import broadcast.mqtt.vertx.util.ByteStream
 
@@ -8,10 +8,11 @@ import broadcast.mqtt.vertx.util.ByteStream
  * 
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-class PublishDecoder(header: Header) extends Decoder {
-  this:BoundedToSession =>
+class PublishDecoder(header: Header,
+                     decoderRegistry:MessageDecoderRegistry,
+                     sessionId:SessionId) extends Decoder {
 
-  val log = LoggerFactory.getLogger(classOf[ConnectDecoder])
+  val log = LoggerFactory.getLogger(classOf[PublishDecoder])
 
   def decode(stream: ByteStream) = {
     if (stream.readableBytes() < header.remainingLength) {
@@ -67,11 +68,14 @@ class PublishDecoder(header: Header) extends Decoder {
       val payload = new Array[Byte](payloadLen.asInstanceOf[Int])
       stream.readBytes(payload)
 
-      val publish = Publish(header, sessionId(), topic, messageId, payload)
+      val publish = Publish(header, sessionId, topic, messageId, payload)
 
       log.debug("Publish decoded {}", publish)
 
-      DecodeResult.Finished(publish, HeaderDecoder())
+      DecodeResult.Finished(publish, decoderRegistry.headerDecoder())
     }
   }
+
+  override def toString = "PublishDecoder(" + sessionId + ", " + header + ")"
+
 }

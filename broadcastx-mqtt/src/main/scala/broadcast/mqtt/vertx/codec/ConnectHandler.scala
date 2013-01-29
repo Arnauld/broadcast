@@ -15,6 +15,12 @@ trait ConnectHandler {
   var sessionId: Option[SessionId] = None
 
   /**
+   * Intended for subclass to be notified when a sessionId has been
+   * affected. Default implementation does nothing.
+   */
+  protected def sessionIdAffected() {}
+
+  /**
    * @see [[broadcast.mqtt.domain.Connect]]
    */
   def handleConnect(msg: Connect) {
@@ -42,6 +48,7 @@ trait ConnectHandler {
       val sessId = SessionId.generate(clientId)
       log.info("User connected: clientId:\'{}\' sessionId:\'{}\'", clientId, sessId)
       sessionId = Some(sessId)
+      sessionIdAffected()
 
       encoders.writeConnack(sock, Connack.Code.Accepted)
     }

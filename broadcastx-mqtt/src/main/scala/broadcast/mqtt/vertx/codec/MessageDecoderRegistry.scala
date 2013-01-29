@@ -30,6 +30,8 @@ class SessionBasedMessageDecoderRegistry(sessionId:SessionId) extends MessageDec
   def decoderFor(header: Header): Option[Decoder] = header.messageType match {
     case CommandType.CONNECT =>
       Some(new ConnectDecoder(header, this))
+    case CommandType.PUBLISH =>
+      Some(new PublishDecoder(header, this, sessionId))
     case _ =>
       None
   }

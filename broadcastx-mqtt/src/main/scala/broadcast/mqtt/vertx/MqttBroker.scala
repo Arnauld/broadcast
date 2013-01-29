@@ -14,12 +14,13 @@ import domain.{DisconnectReason, SessionId}
  *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-class MqttBroker extends Verticle with MqttHandlerGateway {
+class MqttBroker extends Verticle {
 
   import Implicits._
 
   var log: Logger = _
   var sessions = Map[SessionId, MqttHandler]()
+  val sessionListener = new SessionListener
 
   /**
    * Starts the verticle (invoked by the Vert.x platform).
@@ -44,41 +45,14 @@ class MqttBroker extends Verticle with MqttHandlerGateway {
       .setTCPNoDelay(true)
 
   private def newSocketHandler = (sock: NetSocket) => {
-    val handler = new MqttHandler(this, AuthService.acceptAll(), sock)
+    val handler = new MqttHandler(AuthService.acceptAll(), sock)
+    handler.addListener(sessionListener)
     sock.exceptionHandler(newSocketErrorHandler(handler))
     sock.dataHandler(new StateBasedDecoder(HeaderDecoder(), handler))
   }
 
   private def newSocketErrorHandler(handler: MqttHandler) = (e: Exception) => {
     handler.disconnect(DisconnectReason.SocketError(e))
-  }
-
-  /**
-   * Register the [[broadcast.mqtt.vertx.codec.MqttHandler]] with the
-   * specified [[broadcast.mqtt.domain.SessionId]].
-   *
-   * @param sessionId identifier of the handler to discard
-   * @param handler handler associates to the identifier
-   * @see [[broadcast.mqtt.vertx.MqttBroker.reconnectListener( )]]
-   */
-  def register(sessionId: SessionId, handler: MqttHandler) {
-    // to make sure to distinct different connections using the same client id
-    // one attaches a unique token to it, this will prevent to disconnect ourself :)
-    sessions += (sessionId -> handler)
-
-    // see reconnectListener
-    vertx.eventBus().publish("connect", sessionId.asJson())
-  }
-
-  /**
-   * Unregister the given [[domain.SessionId]].
-   * The corresponding [[broadcast.mqtt.vertx.codec.MqttHandler]] will not any
-   * longer take part of any broadcast.
-   *
-   * @param sessionId identifier of the handler to discard
-   */
-  def unregister(sessionId: SessionId) {
-    sessions = sessions - sessionId
   }
 
   /**
@@ -104,5 +78,36 @@ class MqttBroker extends Verticle with MqttHandlerGateway {
     })
     sessions = remainings
     toCloses.foreach(_._2.disconnect(DisconnectReason.Reconnect))
+  }
+
+  class SessionListener extends MqttHandlerListener {
+    /**
+     * Register the [[broadcast.mqtt.vertx.codec.MqttHandler]] with the
+     * specified [[broadcast.mqtt.domain.SessionId]].
+     *
+     * @param sessionId identifier of the handler to discard
+     * @param handler handler associates to the identifier
+     * @see [[broadcast.mqtt.vertx.MqttBroker.reconnectListener( )]]
+     */
+    override def sessionIdAffected(sessionId: SessionId, handler: MqttHandler) {
+      // to make sure to distinct different connections using the same client id
+      // one attaches a unique token to it, this will prevent to disconnect ourself :)
+      sessions += (sessionId -> handler)
+
+      // see reconnectListener
+      vertx.eventBus().publish("connect", sessionId.asJson())
+    }
+
+    /**
+     * Unregister the given [[broadcast.mqtt.domain.SessionId]].
+     * The corresponding [[broadcast.mqtt.vertx.codec.MqttHandler]] will not any
+     * longer take part of any broadcast.
+     *
+     * @param sessionId identifier of the handler to discard
+     */
+    override def sessionDisposed(sessionId: SessionId, handler: MqttHandler) {
+      sessions = sessions - sessionId
+      handler.removeListener(this)
+    }
   }
 }

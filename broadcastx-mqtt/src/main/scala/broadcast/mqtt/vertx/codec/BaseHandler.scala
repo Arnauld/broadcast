@@ -11,12 +11,8 @@ import org.vertx.java.core.net.NetSocket
 trait BaseHandler {
   def log: Logger
 
-  def gateway: MqttHandlerGateway
-
   def sock: NetSocket
 
   def encoders: Encoders
-
-  def sessionIdAffected()
 }
 

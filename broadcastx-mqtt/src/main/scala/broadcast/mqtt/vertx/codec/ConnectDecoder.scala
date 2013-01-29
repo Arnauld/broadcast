@@ -106,14 +106,7 @@ class ConnectDecoder(header: Header, registry:MessageDecoderRegistry) extends De
 
       log.debug("Connect decoded {}", connect)
 
-      /*
-      TODO what about a pending decoder that refuses all read until connect is approved?
-      val pendingDecoder = new PendingDecoder(new HeaderDecoder(listener))
-      listener.foreach(_ ! ChannelCommand(channel, pendingDecoder, connect))
-      DecodeResult.Finished(connect, pendingDecoder)
-      */
-
-      DecodeResult.WaitingForAuth(connect,
+      DecodeResult.FinishedButWaitingForSessionId(connect,
         (s:SessionId) =>
           registry.specializesFor(s).headerDecoder())
     }
@@ -127,4 +120,6 @@ class ConnectDecoder(header: Header, registry:MessageDecoderRegistry) extends De
     val currentPos = stream.readerIndex()
     ((currentPos - startPos) < header.remainingLength)
   }
+
+  override def toString = "ConnectDecoder(" + header + ")"
 }

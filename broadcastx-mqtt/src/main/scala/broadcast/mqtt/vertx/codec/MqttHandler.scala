@@ -8,31 +8,31 @@ import broadcast.mqtt.domain.Header
 import broadcast.mqtt.domain.Connect
 
 
-trait MqttHandlerListener {
-  def sessionIdAffected(sessionId:SessionId) {}
-}
+
 
 /**
  *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-class MqttHandler(val gateway: MqttHandlerGateway,
-                  val authService: AuthService,
+class MqttHandler(val authService: AuthService,
                   val sock: NetSocket,
-                  val encoders: Encoders = Encoders()) extends BaseHandler with ConnectHandler {
+                  val encoders: Encoders = Encoders())
+  extends BaseHandler
+  with ConnectHandler
+  with PublishHandler {
 
   val log = LoggerFactory.getLogger(classOf[MqttHandler])
 
-  var listeners = List[MqttHandlerListener] ()
+  var listeners = List[MqttHandlerListener]()
 
   def getSessionId = sessionId
 
-  def addListener(listener:MqttHandlerListener) {
+  def addListener(listener: MqttHandlerListener) {
     listeners = listener :: listeners
   }
 
-  def removeListener(listener: MqttHandlerListener ) {
-    listeners = listeners.filterNot (_ ==  listener)
+  def removeListener(listener: MqttHandlerListener) {
+    listeners = listeners.filterNot(_ == listener)
   }
 
   def noDecoderFoundForType(header: Header) {
@@ -40,10 +40,13 @@ class MqttHandler(val gateway: MqttHandlerGateway,
     disconnect(DisconnectReason.UnsupportedMessageType)
   }
 
-  def sessionIdAffected() {
-    sessionId.foreach({ sid =>
-      gateway.register(sid, this)
-      listeners.foreach(_.sessionIdAffected(sid))
+  /**
+   * @see [[broadcast.mqtt.vertx.codec.ConnectHandler.sessionIdAffected()]]
+   */
+  override protected def sessionIdAffected() {
+    sessionId.foreach({
+      sid =>
+        listeners.foreach(_.sessionIdAffected(sid, this))
     })
   }
 
@@ -57,8 +60,10 @@ class MqttHandler(val gateway: MqttHandlerGateway,
     msg match {
       case connect: Connect =>
         handleConnect(msg.asInstanceOf[Connect])
+      case publish: Publish =>
+        handlePublish(msg.asInstanceOf[Publish])
       case _ =>
-        log.error("Message decoded but not handlede, got: {}", msg)
+        log.error("Message decoded but not handled, got: {}", msg)
         disconnect(DisconnectReason.UnsupportedMessageType)
     }
   }
@@ -67,7 +72,7 @@ class MqttHandler(val gateway: MqttHandlerGateway,
    * The connection should be closed for a good reason...
    * @see [[broadcast.mqtt.domain.DisconnectReason]]
    */
-  def disconnect(reason:DisconnectReason) {
+  def disconnect(reason: DisconnectReason) {
     import DisconnectReason._
     reason match {
       case Reconnect =>
@@ -84,7 +89,10 @@ class MqttHandler(val gateway: MqttHandlerGateway,
   }
 
   private def disconnect() {
+    sessionId.foreach({
+      sid =>
+        listeners.foreach(_.sessionDisposed(sid, this))
+    })
     sock.close()
-    sessionId.foreach(gateway.unregister(_))
   }
 }

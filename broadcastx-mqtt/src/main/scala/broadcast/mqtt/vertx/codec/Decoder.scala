@@ -19,7 +19,7 @@ object DecodeResult {
 
   case class Finished(result: AnyRef, decoder: Decoder) extends DecodeResult
 
-  case class WaitingForAuth(result: AnyRef, nextDecoderFunc:(SessionId) => Decoder) extends DecodeResult
+  case class FinishedButWaitingForSessionId(result: AnyRef, nextDecoderFunc:(SessionId) => Decoder) extends DecodeResult
 
   case class ChangeDecoder(newDecoder: Decoder) extends DecodeResult
 

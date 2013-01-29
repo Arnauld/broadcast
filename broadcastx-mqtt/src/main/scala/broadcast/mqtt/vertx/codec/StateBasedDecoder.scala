@@ -23,7 +23,7 @@ class StateBasedDecoder(initialDecoder: Decoder,
 
   override def handle(buffer: Buffer) {
     accumulationStream.appendBuffer(buffer)
-    log.debug("Chunk received \n{}", BufferToString.asHex(buffer))
+    log.debug("Chunk received (current decoder {}) \n{}", decoder, BufferToString.asHex(buffer))
     attemptDecoding()
   }
 
@@ -39,10 +39,10 @@ class StateBasedDecoder(initialDecoder: Decoder,
           d.decode(accumulationStream) match {
             case Incomplete => // wait for more data
 
-            case WaitingForAuth(result, nextDecoderFunc) =>
+            case FinishedButWaitingForSessionId(result, nextDecoderFunc) =>
               decoder = None
               handler.addListener(new MqttHandlerListener {
-                override def sessionIdAffected(sessionId: SessionId) {
+                override def sessionIdAffected(sessionId: SessionId, handler:MqttHandler) {
                   log.info("SessionId affected, decoder can be defined to read next incomming data")
                   decoder = Some(nextDecoderFunc(sessionId))
                   handler.removeListener(this)
