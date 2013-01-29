@@ -48,6 +48,7 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
 
   override def decode(stream: ByteStream) = {
     if (stream.readableBytes() < 2) {
+      log.debug("Header incomplete got: {} bytes", stream.readableBytes())
       // header is not yet complete
       DecodeResult.Incomplete
     }

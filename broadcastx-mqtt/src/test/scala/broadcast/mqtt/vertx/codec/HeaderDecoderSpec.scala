@@ -5,7 +5,7 @@ import org.scalatest.matchers.ShouldMatchers._
 import org.vertx.java.core.buffer.Buffer
 import broadcast.util.Bytes._
 import org.scalatest.matchers.{MatchResult, Matcher}
-import broadcast.mqtt.domain.{QosLevel, CommandType, Header}
+import broadcast.mqtt.domain.{SessionId, QosLevel, CommandType, Header}
 import broadcast.mqtt.vertx.util.ByteStream
 
 /**
@@ -113,6 +113,10 @@ class HeaderDecoderSpec extends FeatureSpec with GivenWhenThen with BeforeAndAft
       header = h
       Some(anyDecoder)
     }
+
+    def headerDecoder() = HeaderDecoder(this)
+
+    def specializesFor(sessionId: SessionId) = this
   }
 
 }

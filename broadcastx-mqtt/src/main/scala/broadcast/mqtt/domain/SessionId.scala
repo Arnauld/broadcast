@@ -49,3 +49,7 @@ object SessionId {
     digest.update(byte.asInstanceOf[Byte])
   }
 }
+
+trait BoundedToSession {
+  def sessionId():SessionId
+}

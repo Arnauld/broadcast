@@ -1,6 +1,6 @@
 package broadcast.mqtt.vertx.codec
 
-import broadcast.mqtt.domain.Header
+import broadcast.mqtt.domain.{SessionId, Header}
 import broadcast.mqtt.vertx.util.ByteStream
 
 /**
@@ -17,7 +17,9 @@ object DecodeResult {
 
   case object Incomplete extends DecodeResult
 
-  case class Finished(result: AnyRef, newDecoder: Decoder) extends DecodeResult
+  case class Finished(result: AnyRef, decoder: Decoder) extends DecodeResult
+
+  case class WaitingForAuth(result: AnyRef, nextDecoderFunc:(SessionId) => Decoder) extends DecodeResult
 
   case class ChangeDecoder(newDecoder: Decoder) extends DecodeResult
 

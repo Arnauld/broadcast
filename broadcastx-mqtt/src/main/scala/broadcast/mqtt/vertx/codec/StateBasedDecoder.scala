@@ -3,9 +3,9 @@ package broadcast.mqtt.vertx.codec
 import org.vertx.java.core.buffer.Buffer
 import org.vertx.java.core.Handler
 import annotation.tailrec
-import broadcast.mqtt.domain.MqttMessage
+import broadcast.mqtt.domain.{SessionId, MqttMessage}
 import org.slf4j.LoggerFactory
-import broadcast.mqtt.vertx.util.ByteStream
+import broadcast.mqtt.vertx.util.{BufferToString, ByteStream}
 
 /**
  *
@@ -17,31 +17,55 @@ class StateBasedDecoder(initialDecoder: Decoder,
 
   private val log = LoggerFactory.getLogger(classOf[StateBasedDecoder])
 
-  private var decoder = initialDecoder
+  var decoder: Option[Decoder] = Some(initialDecoder)
 
   private val accumulationStream = new ByteStream()
 
   override def handle(buffer: Buffer) {
     accumulationStream.appendBuffer(buffer)
+    log.debug("Chunk received \n{}", BufferToString.asHex(buffer))
+    attemptDecoding()
+  }
 
-    log.debug("Chunk received {}", buffer)
+  def attemptDecoding() {
+    @tailrec def attemptDecoding0() {
+      decoder match {
+        case None => // nothing can be performed yet, need a decoder
+        case Some(d) =>
 
-    import DecodeResult._
-    @tailrec def decode0() {
-      decoder.decode(accumulationStream) match {
-        case Incomplete =>
-        // wait for more data
-        case Finished(result, newDecoder) =>
-          decoder = newDecoder
-          handler.handle(result.asInstanceOf[MqttMessage])
-          decode0()
-        case ChangeDecoder(newDecoder) =>
-          decoder = newDecoder
-          decode0()
-        case UnsupportedType(header) =>
-          handler.noDecoderFoundForType(header)
+          import DecodeResult._
+          log.debug("Decoding data using decoder {}", d)
+
+          d.decode(accumulationStream) match {
+            case Incomplete => // wait for more data
+
+            case WaitingForAuth(result, nextDecoderFunc) =>
+              decoder = None
+              handler.addListener(new MqttHandlerListener {
+                override def sessionIdAffected(sessionId: SessionId) {
+                  log.info("SessionId affected, decoder can be defined to read next incomming data")
+                  decoder = Some(nextDecoderFunc(sessionId))
+                  handler.removeListener(this)
+                  attemptDecoding()
+                }
+              })
+              handler.handle(result.asInstanceOf[MqttMessage])
+              attemptDecoding0()
+
+            case Finished(result, newDecoder) =>
+              decoder = Some(newDecoder)
+              handler.handle(result.asInstanceOf[MqttMessage])
+              attemptDecoding0()
+
+            case ChangeDecoder(newDecoder) =>
+              decoder = Some(newDecoder)
+              attemptDecoding0()
+
+            case UnsupportedType(header) =>
+              handler.noDecoderFoundForType(header)
+          }
       }
     }
-    decode0()
+    attemptDecoding0()
   }
 }

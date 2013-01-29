@@ -1,10 +1,16 @@
 package broadcast.mqtt.vertx.codec
 
 import org.vertx.java.core.net.NetSocket
-import broadcast.mqtt.domain.{DisconnectReason, Connect, Header, MqttMessage}
+import broadcast.mqtt.domain._
 import org.slf4j.LoggerFactory
 import broadcast.service.AuthService
+import broadcast.mqtt.domain.Header
+import broadcast.mqtt.domain.Connect
 
+
+trait MqttHandlerListener {
+  def sessionIdAffected(sessionId:SessionId) {}
+}
 
 /**
  *
@@ -17,7 +23,17 @@ class MqttHandler(val gateway: MqttHandlerGateway,
 
   val log = LoggerFactory.getLogger(classOf[MqttHandler])
 
+  var listeners = List[MqttHandlerListener] ()
+
   def getSessionId = sessionId
+
+  def addListener(listener:MqttHandlerListener) {
+    listeners = listener :: listeners
+  }
+
+  def removeListener(listener: MqttHandlerListener ) {
+    listeners = listeners.filterNot (_ ==  listener)
+  }
 
   def noDecoderFoundForType(header: Header) {
     log.error("Unsupported message type (no decoder found), got: {}", header)
@@ -25,7 +41,10 @@ class MqttHandler(val gateway: MqttHandlerGateway,
   }
 
   def sessionIdAffected() {
-    sessionId.foreach(gateway.register(_, this))
+    sessionId.foreach({ sid =>
+      gateway.register(sid, this)
+      listeners.foreach(_.sessionIdAffected(sid))
+    })
   }
 
   /**

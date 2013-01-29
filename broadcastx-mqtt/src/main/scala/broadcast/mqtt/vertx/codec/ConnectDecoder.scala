@@ -1,8 +1,12 @@
 package broadcast.mqtt.vertx.codec
 
-import broadcast.mqtt.domain.{Connect, Message, QosLevel, Header}
+import broadcast.mqtt.domain._
 import org.slf4j.LoggerFactory
 import broadcast.mqtt.vertx.util.ByteStream
+import broadcast.mqtt.domain.Header
+import broadcast.mqtt.domain.Message
+import broadcast.mqtt.domain.Connect
+import scala.Some
 
 /**
  *
@@ -11,7 +15,8 @@ import broadcast.mqtt.vertx.util.ByteStream
  * (MQTT V3.1 Protocol Specification - section 3.1)
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-class ConnectDecoder(header: Header) extends Decoder {
+class ConnectDecoder(header: Header, registry:MessageDecoderRegistry) extends Decoder {
+
   val log = LoggerFactory.getLogger(classOf[ConnectDecoder])
 
   def decode(stream: ByteStream) = {
@@ -108,7 +113,9 @@ class ConnectDecoder(header: Header) extends Decoder {
       DecodeResult.Finished(connect, pendingDecoder)
       */
 
-      DecodeResult.Finished(connect, HeaderDecoder())
+      DecodeResult.WaitingForAuth(connect,
+        (s:SessionId) =>
+          registry.specializesFor(s).headerDecoder())
     }
   }
 
