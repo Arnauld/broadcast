@@ -43,4 +43,4 @@ http://vertxproject.wordpress.com/2012/05/18/where-vert-x-delivers-over-node/
 
 # Misc
 
-Gridster
+Gridster / proprioception

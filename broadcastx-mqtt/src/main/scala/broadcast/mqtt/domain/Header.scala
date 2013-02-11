@@ -33,6 +33,7 @@ package broadcast.mqtt.domain
  *               zero-length payload and the Retain flag set on the same topic.<br/>
  * @param remainingLength Represents the number of bytes remaining within the current message,
  *               including data in the variable header and the payload
+ * @param raw raw bytes that constitutes the header
  * @see QosLevel
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
@@ -40,4 +41,6 @@ case class Header(messageType: CommandType.Value,
                   DUP: Boolean,
                   QoS: QosLevel.Value,
                   retain: Boolean,
-                  remainingLength: Long)
+                  remainingLength: Long,
+                  raw: Option[Array[Byte]]
+                  )

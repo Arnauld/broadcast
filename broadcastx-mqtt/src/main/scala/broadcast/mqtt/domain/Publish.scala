@@ -1,56 +1,54 @@
 package broadcast.mqtt.domain
 
+import broadcast.mqtt.vertx.util.ByteStream
+
 
 /**
  *
- * @author <a href="http://twitter.com/aloyer">@aloyer</a>
+ * @param header
+ * @param sessionId
+ * @param topic
+ * @param messageId
+ * @param payloadLength indicates the length of the payload that is:
+ *                      the length of the variable header *minus* the length used to encode
+ *                      both the topic name and the optional message id.
+ *                      Payload is then the last `payloadLength` bytes of `raw`.
+ * @param raw raw bytes (including both header and variable header content) of the initial Publish message
  */
 case class Publish(header: Header,
                    sessionId: SessionId,
                    topic: String,
                    messageId: Option[Int],
-                   payload: Array[Byte]) extends MqttMessage
+                   payloadLength: Int,
+                   raw: Option[Array[Byte]]) extends MqttMessage {
+  def write(socket:MqttSocket) {
+    socket.write(header.raw.get)
+    socket.write(raw.get)
+  }
 
-/**
- *
- * @author <a href="http://twitter.com/aloyer">@aloyer</a>
- */
-object Puback {
-  val header = Header(messageType = CommandType.PUBACK,
-    DUP = false,
-    QoS = QosLevel(1),
-    retain = false,
-    remainingLength = 2)
+  def rawWithHeader(): Array[Byte] = {
+    val headerBytes = header.raw.get
+    val msgBytes = raw.get
+    val len = headerBytes.length + msgBytes.length
+    val res = new Array[Byte](len)
+    Array.copy(headerBytes, 0, res, 0, headerBytes.length)
+    Array.copy(msgBytes, 0, res, headerBytes.length, msgBytes.length)
+    res
+  }
 
+  def payload(): Option[Array[Byte]] =
+    raw match {
+      case Some(r) =>
+        val slice = r.slice(r.length - payloadLength, r.length)
+        Some(slice)
+      case None =>
+        None
+    }
 }
 
-/**
- *
- * @param messageId
- * @author <a href="http://twitter.com/aloyer">@aloyer</a>
- */
-case class Puback(messageId:Int) {
-  def header() = Puback.header
-}
 
-/**
- *
- * @author <a href="http://twitter.com/aloyer">@aloyer</a>
- */
-object Pubrec {
-  val header = Header(messageType = CommandType.PUBREC,
-    DUP = false,
-    QoS = QosLevel(2),
-    retain = false,
-    remainingLength = 2)
-
-}
-
-/**
- *
- * @param messageId
- * @author <a href="http://twitter.com/aloyer">@aloyer</a>
- */
-case class Pubrec(messageId:Int) {
-  def header() = Pubrec.header
+object Publish {
+  def topic(raw:Array[Byte]):String =
+    // hopefully topic is the first utf string of the variable header
+    ByteStream.readUTF(raw, 0)
 }

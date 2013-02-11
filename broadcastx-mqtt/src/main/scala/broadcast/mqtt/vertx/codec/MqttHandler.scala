@@ -4,24 +4,24 @@ import org.vertx.java.core.net.NetSocket
 import broadcast.mqtt.domain._
 import org.slf4j.LoggerFactory
 import broadcast.service.AuthService
+import broadcast.mqtt.service.{MessagingService}
+import org.vertx.java.core.buffer.Buffer
 import broadcast.mqtt.domain.Header
 import broadcast.mqtt.domain.Connect
-
-
 
 
 /**
  *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-class MqttHandler(val authService: AuthService,
-                  val sock: NetSocket,
-                  val encoders: Encoders = Encoders())
-  extends BaseHandler
+class MqttHandler(val sock: NetSocket,
+                  val authService: AuthService,
+                  val messagingService: MessagingService)
+  extends Encoder
   with ConnectHandler
   with PublishHandler {
 
-  val log = LoggerFactory.getLogger(classOf[MqttHandler])
+  private val log = LoggerFactory.getLogger(classOf[MqttHandler])
 
   var listeners = List[MqttHandlerListener]()
 
@@ -38,16 +38,6 @@ class MqttHandler(val authService: AuthService,
   def noDecoderFoundForType(header: Header) {
     log.error("Unsupported message type (no decoder found), got: {}", header)
     disconnect(DisconnectReason.UnsupportedMessageType)
-  }
-
-  /**
-   * @see [[broadcast.mqtt.vertx.codec.ConnectHandler.sessionIdAffected()]]
-   */
-  override protected def sessionIdAffected() {
-    sessionId.foreach({
-      sid =>
-        listeners.foreach(_.sessionIdAffected(sid, this))
-    })
   }
 
   /**
@@ -95,4 +85,31 @@ class MqttHandler(val authService: AuthService,
     })
     sock.close()
   }
+
+  /**
+   * @see [[broadcast.mqtt.vertx.codec.ConnectHandler.sessionIdAffected( )]]
+   */
+  override protected def sessionIdAffected() {
+    sessionId.foreach({
+      sid =>
+        listeners.foreach(_.sessionIdAffected(sid, this))
+    })
+  }
+
+  /**
+   * @see [[broadcast.mqtt.vertx.codec.PublishHandler.publish( )]]
+   */
+  override protected def publish(msg: Publish, oncePublished: => Unit) {
+    messagingService.publish(msg.rawWithHeader(), oncePublished)
+  }
+
+  /**
+   * @see [[MqttSocket]]
+   */
+  def asMqttSocket(): MqttSocket =
+    new MqttSocket {
+      def write(msg: Array[Byte]) {
+        sock.write(new Buffer(msg))
+      }
+    }
 }

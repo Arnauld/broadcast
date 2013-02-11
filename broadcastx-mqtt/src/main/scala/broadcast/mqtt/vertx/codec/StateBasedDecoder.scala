@@ -6,6 +6,7 @@ import annotation.tailrec
 import broadcast.mqtt.domain.{SessionId, MqttMessage}
 import org.slf4j.LoggerFactory
 import broadcast.mqtt.vertx.util.{BufferToString, ByteStream}
+import broadcast.util.Objects
 
 /**
  *
@@ -29,17 +30,23 @@ class StateBasedDecoder(initialDecoder: Decoder,
 
   def attemptDecoding() {
     @tailrec def attemptDecoding0() {
+      val readerIndex: Int = accumulationStream.readerIndex()
+
       decoder match {
         case None => // nothing can be performed yet, need a decoder
         case Some(d) =>
 
           import DecodeResult._
-          log.debug("Decoding data using decoder {}", d)
+          log.debug("Decoding data using decoder {} (readerIndex {} / readableBytes {})",
+            Objects.o(d, readerIndex, accumulationStream.readableBytes()))
 
           d.decode(accumulationStream) match {
             case Incomplete => // wait for more data
+              accumulationStream.readerIndex(readerIndex)
 
             case FinishedButWaitingForSessionId(result, nextDecoderFunc) =>
+              accumulationStream.discardReadBytes()
+
               decoder = None
               handler.addListener(new MqttHandlerListener {
                 override def sessionIdAffected(sessionId: SessionId, handler:MqttHandler) {
@@ -53,15 +60,22 @@ class StateBasedDecoder(initialDecoder: Decoder,
               attemptDecoding0()
 
             case Finished(result, newDecoder) =>
+              accumulationStream.discardReadBytes()
+
               decoder = Some(newDecoder)
               handler.handle(result.asInstanceOf[MqttMessage])
-              attemptDecoding0()
+              if(accumulationStream.readableBytes()>0)
+                attemptDecoding0()
 
             case ChangeDecoder(newDecoder) =>
+              accumulationStream.discardReadBytes()
+
               decoder = Some(newDecoder)
               attemptDecoding0()
 
             case UnsupportedType(header) =>
+              accumulationStream.discardReadBytes()
+
               handler.noDecoderFoundForType(header)
           }
       }

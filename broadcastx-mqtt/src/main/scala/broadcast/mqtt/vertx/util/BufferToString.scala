@@ -17,7 +17,7 @@ object BufferToString {
         builder.append('0')
       }
       if (b < 31) {
-        bString.append('.')
+        bString.append('•')
       }
       else {
         bString.append(b.asInstanceOf[Char])

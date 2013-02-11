@@ -32,6 +32,8 @@ class SessionBasedMessageDecoderRegistry(sessionId:SessionId) extends MessageDec
       Some(new ConnectDecoder(header, this))
     case CommandType.PUBLISH =>
       Some(new PublishDecoder(header, this, sessionId))
+    case CommandType.SUBSCRIBE =>
+      Some(new SubscribeDecoder(header, this, sessionId))
     case _ =>
       None
   }

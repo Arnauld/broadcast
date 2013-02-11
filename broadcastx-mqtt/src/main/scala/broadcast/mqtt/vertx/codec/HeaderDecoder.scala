@@ -4,13 +4,14 @@ import annotation.tailrec
 import broadcast.mqtt.domain.{QosLevel, CommandType, Header}
 import org.slf4j.LoggerFactory
 import broadcast.mqtt.vertx.util.ByteStream
+import org.vertx.java.core.buffer.Buffer
 
 /**
  *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
 object HeaderDecoder {
-  def apply(decoderRegistry:MessageDecoderRegistry = DefaultMessageDecoderRegistry): HeaderDecoder = new HeaderDecoder(decoderRegistry)
+  def apply(decoderRegistry: MessageDecoderRegistry = DefaultMessageDecoderRegistry): HeaderDecoder = new HeaderDecoder(decoderRegistry)
 
   //
   // multiplier = 1
@@ -40,9 +41,36 @@ object HeaderDecoder {
     decodeRemainingLength0(1, 0)
   }
 
+  // do
+  //   digit = X MOD 128
+  //   X = X DIV 128
+  //   // if there are more digits to encode, set the top bit of this digit
+  //   if ( X > 0 )
+  //     digit = digit OR 0x80
+  //   endif
+  //   'output' digit
+  // while ( X > 0 )
+  //
+  // (MQTT V3.1 Protocol Specification - section 2.1)
+  def encodeRemainingLength(remainingLength:Long, buffer:Buffer) {
+    @tailrec def encodeRemainingLength0(x:Long) {
+      val digit = (x % 128).asInstanceOf[Int]
+      val newX  = (x / 128)
+      if (newX > 0) {
+        buffer.appendByte( (digit | 0x80 ).asInstanceOf[Byte] )
+        encodeRemainingLength0(newX)
+      }
+      else {
+        buffer.appendByte( digit.asInstanceOf[Byte] )
+      }
+    }
+    encodeRemainingLength0(remainingLength)
+  }
+
+
 }
 
-class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
+class HeaderDecoder(decoderRegistry: MessageDecoderRegistry) extends Decoder {
 
   private val log = LoggerFactory.getLogger(classOf[HeaderDecoder])
 
@@ -53,6 +81,8 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
       DecodeResult.Incomplete
     }
     else {
+      val startPos = stream.readerIndex()
+
       val b1 = stream.readByte()
 
       // The message header for each MQTT command message contains a fixed header.
@@ -84,7 +114,21 @@ class HeaderDecoder(decoderRegistry:MessageDecoderRegistry) extends Decoder {
           val dupFlag = (((b1 & 0x0008) >> 3) == 1)
           val qosLevel = ((b1 & 0x0006) >> 1)
           val retainFlag = ((b1 & 0x0001) == 1)
-          val header = Header(CommandType(messageType), dupFlag, QosLevel(qosLevel), retainFlag, length)
+
+          val endPos = stream.readerIndex()
+          val headerLen = endPos - startPos
+          val raw = new Array[Byte](headerLen)
+          stream.readerIndex(startPos)
+          stream.readBytes(raw)
+
+          val header =
+            Header(
+              CommandType(messageType),
+              dupFlag,
+              QosLevel(qosLevel),
+              retainFlag,
+              length,
+              Some(raw))
 
           log.debug("Header decoded {}", header)
 

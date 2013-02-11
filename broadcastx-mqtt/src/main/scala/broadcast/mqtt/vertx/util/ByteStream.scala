@@ -2,7 +2,7 @@ package broadcast.mqtt.vertx.util
 
 import org.vertx.java.core.buffer.Buffer
 import org.jboss.netty.buffer.ChannelBuffers
-import java.io.{DataInput, DataInputStream}
+import java.io.{ByteArrayInputStream, DataInput, DataInputStream}
 
 /**
  *
@@ -10,6 +10,7 @@ import java.io.{DataInput, DataInputStream}
  * @see [[org.jboss.netty.buffer.ChannelBuffer]]
  */
 class ByteStream(initialSizeHint: Int = 64) {
+
 
   // All data values are in big-endian order:
   // higher order bytes precede lower order bytes
@@ -56,6 +57,10 @@ class ByteStream(initialSizeHint: Int = 64) {
   def resetReaderIndex(): ByteStream = {
     channelBuffer.resetReaderIndex()
     this
+  }
+
+  def readerIndex(readerIndex: Int) {
+    channelBuffer.readerIndex(readerIndex)
   }
 
   def readerIndex(): Int = channelBuffer.readerIndex()
@@ -109,6 +114,17 @@ class ByteStream(initialSizeHint: Int = 64) {
 
   // so just rely on it, it would be safer
     DataInputStream.readUTF(new BufferAsDataInput(this))
+}
+
+object ByteStream {
+  def readUTF(bytes:Array[Byte], offset:Int):String = {
+    val stream = new DataInputStream(new ByteArrayInputStream(bytes, offset, bytes.length - offset))
+    DataInputStream.readUTF(stream)
+  }
+
+  def writeUnsignedShort(buffer:Buffer, value:Int) {
+    buffer.appendShort((value & 0xFFFF).asInstanceOf[Short])
+  }
 }
 
 

@@ -8,7 +8,7 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
  * 
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
-object ClientApp extends App {
+object ClientPublishApp extends App {
   val latch = new CountDownLatch(1)
   val mqtt = new MQTT
   mqtt.setConnectAttemptsMax(3)

@@ -5,12 +5,12 @@ import org.slf4j.LoggerFactory
 import broadcast.mqtt.vertx.util.ByteStream
 
 /**
- * 
+ *
  * @author <a href="http://twitter.com/aloyer">@aloyer</a>
  */
 class PublishDecoder(header: Header,
-                     decoderRegistry:MessageDecoderRegistry,
-                     sessionId:SessionId) extends Decoder {
+                     decoderRegistry: MessageDecoderRegistry,
+                     sessionId: SessionId) extends Decoder {
 
   val log = LoggerFactory.getLogger(classOf[PublishDecoder])
 
@@ -31,6 +31,7 @@ class PublishDecoder(header: Header,
       // When received by a client that subscribed using wildcard characters,
       // this string will be the absolute topic specified by the originating
       // publisher and not the subscription string used by the client.
+      // (MQTT V3.1 Protocol Specification - section 3.3)
       val topic = stream.readUTF()
 
       //  Message ID
@@ -61,14 +62,29 @@ class PublishDecoder(header: Header,
       // application specific. The Remaining Length field in the fixed header
       // includes both the variable header length and the payload length. As such,
       // it is valid for a PUBLISH to contain a 0-length payload.
+      // (MQTT V3.1 Protocol Specification - section 3.3)
 
       // make sure there is enough bytes remaining according to the header
-      assert(stream.readableBytes() >= payloadLen )
+      assert(stream.readableBytes() >= payloadLen)
 
-      val payload = new Array[Byte](payloadLen.asInstanceOf[Int])
-      stream.readBytes(payload)
+      // retrieve a copy of the original published message:
+      //
+      // If a client subscribes to one or more topics, any message published to
+      // those topics are sent by the server to the client as a PUBLISH message.
+      // (MQTT V3.1 Protocol Specification - section 3.3)
 
-      val publish = Publish(header, sessionId, topic, messageId, payload)
+      // back to the beginning of the 'publish' message (without the header)
+      val rawPublish = new Array[Byte](header.remainingLength.asInstanceOf[Int])
+      stream.readerIndex(startPos)
+      stream.readBytes(rawPublish)
+
+      val publish =
+        Publish(header,
+          sessionId,
+          topic,
+          messageId,
+          payloadLen.asInstanceOf[Int],
+          Some(rawPublish))
 
       log.debug("Publish decoded {}", publish)
 
@@ -77,5 +93,4 @@ class PublishDecoder(header: Header,
   }
 
   override def toString = "PublishDecoder(" + sessionId + ", " + header + ")"
-
 }
